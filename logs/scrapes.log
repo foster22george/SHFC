@@ -1,0 +1,4 @@
+2026-01-23 00:17:56,876 - INFO - 12:00 Daily scrape starting (attempt 1/2)
+2026-01-23 00:18:07,675 - INFO - 12:00 Daily scrape completed: 379 records
+2026-01-23 00:18:07,675 - WARNING - Low record count: 379 (expected ~1000)
+2026-01-23 00:18:07,675 - INFO - 12:00 scrape job completed successfully
