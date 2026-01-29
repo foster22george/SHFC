@@ -8,3 +8,7 @@
 2026-01-28 12:43:29,042 - INFO - 12:00 Daily scrape starting (attempt 1/2)
 2026-01-28 12:43:55,273 - INFO - 12:00 Daily scrape completed: 1000 records
 2026-01-28 12:43:55,273 - INFO - 12:00 scrape job completed successfully
+2026-01-29 00:53:50,484 - INFO - 12:00 Daily scrape starting (attempt 1/2)
+2026-01-29 00:54:02,901 - INFO - 12:00 Daily scrape completed: 401 records
+2026-01-29 00:54:02,901 - WARNING - Low record count: 401 (expected ~1000)
+2026-01-29 00:54:02,901 - INFO - 12:00 scrape job completed successfully
