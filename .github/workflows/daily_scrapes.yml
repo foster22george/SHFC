@@ -2,9 +2,16 @@ name: Daily Leaderboard Scrape
 
 on:
   schedule:
-    # Runs at midnight EST (5:00 UTC)
-    - cron: '0 5 * * *'
-  workflow_dispatch:  # Allows manual triggering
+  - cron: "0 2 * * *"
+  workflow_dispatch:
+  push:  # Add this to keepworkflow active
+    branches:
+      - main
+    paths:
+      - '.github/workflows/daily_scrapes.yml'  # Only trigger on workflow changes
+
+permissions:
+  contents: write
 
 jobs:
   scrape:
