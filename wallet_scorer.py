@@ -59,8 +59,11 @@ class WalletScorer:
         """
         Scan the snapshots directory and identify all relevant CSV files.
         
-        Expected filename format: YYYY-MM-DD_<category>_<timeframe>.csv
-        Example: 2026-01-15_politics_day.csv
+        Expected filename formats:
+        - Format 1: YYYY-MM-DD_<category>_<timeframe>.csv (e.g., 2026-01-15_politics_day.csv)
+        - Format 2: leaderboard_YYYYMMDD.csv (e.g., leaderboard_20260129.csv)
+        
+        For Format 2, categories are determined from a 'category' column in the CSV itself.
         
         Returns:
             dict: Organized snapshot files by category
@@ -82,39 +85,64 @@ class WalletScorer:
         
         for filepath in csv_files:
             try:
-                # Parse filename: YYYY-MM-DD_category_timeframe.csv
                 filename = filepath.stem  # Remove .csv extension
                 parts = filename.split('_')
                 
-                if len(parts) < 3:
-                    print(f"Skipping {filepath.name}: Invalid format")
+                # Try Format 1: YYYY-MM-DD_category_timeframe.csv
+                if len(parts) >= 3 and '-' in parts[0]:
+                    date_str = parts[0]
+                    category = parts[1]
+                    timeframe = parts[2]
+                    
+                    # Parse date
+                    file_date = datetime.strptime(date_str, '%Y-%m-%d')
+                    
+                    # Only include files within lookback period
+                    if file_date < self.cutoff_date:
+                        continue
+                    
+                    # Only use 'day' timeframe to avoid double-counting
+                    if timeframe != 'day':
+                        continue
+                    
+                    # Store file info
+                    if category not in categorized_files:
+                        categorized_files[category] = []
+                    
+                    categorized_files[category].append({
+                        'path': filepath,
+                        'date': file_date,
+                        'category': category,
+                        'timeframe': 'day'
+                    })
+                
+                # Try Format 2: leaderboard_YYYYMMDD.csv
+                elif len(parts) == 2 and parts[0] == 'leaderboard':
+                    date_str = parts[1]
+                    
+                    # Parse date (YYYYMMDD format)
+                    file_date = datetime.strptime(date_str, '%Y%m%d')
+                    
+                    # Only include files within lookback period
+                    if file_date < self.cutoff_date:
+                        print(f"Skipping {filepath.name}: Outside date range ({file_date.date()} < {self.cutoff_date.date()})")
+                        continue
+                    
+                    # For leaderboard files, we need to read the CSV to get categories
+                    # Mark this file for processing (we'll handle categories during load)
+                    if 'combined' not in categorized_files:
+                        categorized_files['combined'] = []
+                    
+                    categorized_files['combined'].append({
+                        'path': filepath,
+                        'date': file_date,
+                        'category': 'combined',  # Will be split by category column
+                        'timeframe': 'day'
+                    })
+                    
+                else:
+                    print(f"Skipping {filepath.name}: Unrecognized format")
                     continue
-                
-                date_str = parts[0]
-                category = parts[1]
-                timeframe = parts[2]
-                
-                # Parse date
-                file_date = datetime.strptime(date_str, '%Y-%m-%d')
-                
-                # Only include files within lookback period
-                if file_date < self.cutoff_date:
-                    continue
-                
-                # Only use 'day' timeframe to avoid double-counting
-                if timeframe != 'day':
-                    continue
-                
-                # Store file info
-                if category not in categorized_files:
-                    categorized_files[category] = []
-                
-                categorized_files[category].append({
-                    'path': filepath,
-                    'date': file_date,
-                    'category': category,
-                    'timeframe': timeframe
-                })
                 
             except Exception as e:
                 print(f"Error parsing {filepath.name}: {e}")
@@ -142,51 +170,85 @@ class WalletScorer:
         - pnl: Profit and loss
         - volume: Trading volume
         - userName: Display name
+        - category: (Optional) Trading category - if present, file will be split by category
+        - timeframe: (Optional) Timeframe indicator
         
         Returns:
-            dict: {category: list of DataFrames}
+            dict: {category: DataFrame}
         """
         print(f"\nLoading snapshot data...")
         
         all_snapshots = {}
         
-        for category, files in self.snapshot_files.items():
-            category_snapshots = []
-            
+        for file_category, files in self.snapshot_files.items():
             for file_info in files:
                 try:
                     df = pd.read_csv(file_info['path'])
                     
-                    # Add metadata columns
+                    # Add metadata
                     df['snapshot_date'] = file_info['date']
-                    df['category'] = category
                     
-                    # Ensure required columns exist
-                    required_cols = ['rank', 'address', 'pnl', 'volume', 'userName']
-                    missing_cols = [col for col in required_cols if col not in df.columns]
+                    # Check if this is a combined file with category column
+                    if 'category' in df.columns and file_category == 'combined':
+                        # Split by category
+                        for category in df['category'].unique():
+                            category_df = df[df['category'] == category].copy()
+                            category_df['category'] = category
+                            
+                            # Ensure required columns exist
+                            required_cols = ['rank', 'address', 'pnl', 'volume', 'userName']
+                            missing_cols = [col for col in required_cols if col not in category_df.columns]
+                            
+                            if missing_cols:
+                                print(f"Warning: {file_info['path'].name} missing columns: {missing_cols}")
+                                continue
+                            
+                            # Convert numeric columns
+                            category_df['rank'] = pd.to_numeric(category_df['rank'], errors='coerce')
+                            category_df['pnl'] = pd.to_numeric(category_df['pnl'], errors='coerce')
+                            category_df['volume'] = pd.to_numeric(category_df['volume'], errors='coerce')
+                            
+                            # Add to category snapshots
+                            if category not in all_snapshots:
+                                all_snapshots[category] = []
+                            all_snapshots[category].append(category_df)
                     
-                    if missing_cols:
-                        print(f"Warning: {file_info['path'].name} missing columns: {missing_cols}")
-                        continue
-                    
-                    # Convert numeric columns
-                    df['rank'] = pd.to_numeric(df['rank'], errors='coerce')
-                    df['pnl'] = pd.to_numeric(df['pnl'], errors='coerce')
-                    df['volume'] = pd.to_numeric(df['volume'], errors='coerce')
-                    
-                    category_snapshots.append(df)
+                    else:
+                        # Regular categorized file
+                        category = file_info['category']
+                        df['category'] = category
+                        
+                        # Ensure required columns exist
+                        required_cols = ['rank', 'address', 'pnl', 'volume', 'userName']
+                        missing_cols = [col for col in required_cols if col not in df.columns]
+                        
+                        if missing_cols:
+                            print(f"Warning: {file_info['path'].name} missing columns: {missing_cols}")
+                            continue
+                        
+                        # Convert numeric columns
+                        df['rank'] = pd.to_numeric(df['rank'], errors='coerce')
+                        df['pnl'] = pd.to_numeric(df['pnl'], errors='coerce')
+                        df['volume'] = pd.to_numeric(df['volume'], errors='coerce')
+                        
+                        # Add to category snapshots
+                        if category not in all_snapshots:
+                            all_snapshots[category] = []
+                        all_snapshots[category].append(df)
                     
                 except Exception as e:
                     print(f"Error loading {file_info['path'].name}: {e}")
                     continue
-            
-            if category_snapshots:
-                # Combine all snapshots for this category
-                all_snapshots[category] = pd.concat(category_snapshots, ignore_index=True)
-                print(f"  {category}: {len(category_snapshots)} snapshots, {len(all_snapshots[category])} total records")
         
-        self.all_data = all_snapshots
-        return all_snapshots
+        # Combine snapshots for each category
+        combined_snapshots = {}
+        for category, snapshot_list in all_snapshots.items():
+            if snapshot_list:
+                combined_snapshots[category] = pd.concat(snapshot_list, ignore_index=True)
+                print(f"  {category}: {len(snapshot_list)} snapshots, {len(combined_snapshots[category])} total records")
+        
+        self.all_data = combined_snapshots
+        return combined_snapshots
     
     def calculate_scores(self):
         """
