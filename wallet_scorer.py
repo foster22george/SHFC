@@ -1,14 +1,3 @@
-"""
-Polymarket Wallet Scoring System
-=================================
-This script analyzes wallet performance from daily leaderboard snapshots over the past 2 weeks.
-It generates performance scores for each wallet by category (politics, sports, crypto, etc.)
-and outputs ranked CSV files.
-
-Author: Portfolio Analysis Tool
-Date: February 2026
-"""
-
 import pandas as pd
 import os
 from datetime import datetime, timedelta
@@ -20,9 +9,7 @@ warnings.filterwarnings('ignore')
 
 
 class WalletScorer:
-    """
-    Analyzes wallet performance across Polymarket categories using historical snapshots.
-    
+    """    
     Scoring Methodology:
     - Tracks rank changes over 2-week period
     - Measures P&L growth rate
@@ -32,14 +19,6 @@ class WalletScorer:
     """
     
     def __init__(self, snapshots_dir='snapshots', lookback_days=14):
-        """
-        Initialize the wallet scorer.
-        
-        Args:
-            snapshots_dir (str): Path to the snapshots folder containing daily CSVs
-                                 EDIT THIS if your snapshots folder is in a different location
-            lookback_days (int): Number of days to analyze (default: 14 for 2 weeks)
-        """
         self.snapshots_dir = Path(snapshots_dir)
         self.lookback_days = lookback_days
         self.today = datetime.now()
@@ -56,31 +35,18 @@ class WalletScorer:
         print(f"Analyzing from {self.cutoff_date.date()} to {self.today.date()}")
     
     def discover_snapshot_files(self):
-        """
-        Scan the snapshots directory and identify all relevant CSV files.
-        
-        Expected filename formats:
-        - Format 1: YYYY-MM-DD_<category>_<timeframe>.csv (e.g., 2026-01-15_politics_day.csv)
-        - Format 2: leaderboard_YYYYMMDD.csv (e.g., leaderboard_20260129.csv)
-        
-        For Format 2, categories are determined from a 'category' column in the CSV itself.
-        
-        Returns:
-            dict: Organized snapshot files by category
-        """
+        #Scan the snapshots directory and identify all relevant CSV files.
         if not self.snapshots_dir.exists():
             raise FileNotFoundError(
                 f"Snapshots directory not found: {self.snapshots_dir}\n"
                 f"Please update the 'snapshots_dir' parameter in __init__ to point to your snapshots folder."
             )
         
-        print(f"\nScanning for snapshot files in: {self.snapshots_dir}")
+        #print(f"scanning for snapshot files in: {self.snapshots_dir}")
         
-        # Find all CSV files
         csv_files = list(self.snapshots_dir.glob('*.csv'))
-        print(f"Found {len(csv_files)} total CSV files")
+        #print(f"Found {len(csv_files)} total CSV files")
         
-        # Organize by category
         categorized_files = {}
         
         for filepath in csv_files:
@@ -88,36 +54,9 @@ class WalletScorer:
                 filename = filepath.stem  # Remove .csv extension
                 parts = filename.split('_')
                 
-                # Try Format 1: YYYY-MM-DD_category_timeframe.csv
-                if len(parts) >= 3 and '-' in parts[0]:
-                    date_str = parts[0]
-                    category = parts[1]
-                    timeframe = parts[2]
-                    
-                    # Parse date
-                    file_date = datetime.strptime(date_str, '%Y-%m-%d')
-                    
-                    # Only include files within lookback period
-                    if file_date < self.cutoff_date:
-                        continue
-                    
-                    # Only use 'day' timeframe to avoid double-counting
-                    if timeframe != 'day':
-                        continue
-                    
-                    # Store file info
-                    if category not in categorized_files:
-                        categorized_files[category] = []
-                    
-                    categorized_files[category].append({
-                        'path': filepath,
-                        'date': file_date,
-                        'category': category,
-                        'timeframe': 'day'
-                    })
                 
-                # Try Format 2: leaderboard_YYYYMMDD.csv
-                elif len(parts) == 2 and parts[0] == 'leaderboard':
+                # looking for format: leaderboard_YYYYMMDD.csv
+                if len(parts) == 2 and parts[0] == 'leaderboard':
                     date_str = parts[1]
                     
                     # Parse date (YYYYMMDD format)
@@ -163,18 +102,6 @@ class WalletScorer:
     def load_snapshots(self):
         """
         Load all relevant snapshot CSV files into memory.
-        
-        Expected CSV columns:
-        - rank: Position on leaderboard (1-100)
-        - address: Wallet address
-        - pnl: Profit and loss
-        - volume: Trading volume
-        - userName: Display name
-        - category: (Optional) Trading category - if present, file will be split by category
-        - timeframe: (Optional) Timeframe indicator
-        
-        Returns:
-            dict: {category: DataFrame}
         """
         print(f"\nLoading snapshot data...")
         
@@ -260,9 +187,6 @@ class WalletScorer:
         3. Consistency Score (20%): How often they appear in top 100
         4. Volume Score (15%): Trading volume relative to peers
         5. Recency Score (10%): Better recent performance weighted higher
-        
-        Returns:
-            dict: {category: DataFrame with scores}
         """
         print(f"\nCalculating performance scores...")
         
@@ -362,16 +286,6 @@ class WalletScorer:
         return scored_categories
     
     def get_top_wallets(self, category, n=5):
-        """
-        Get the top N wallets for a specific category.
-        
-        Args:
-            category (str): Category name (e.g., 'politics', 'sports')
-            n (int): Number of top wallets to return
-        
-        Returns:
-            DataFrame: Top N wallets with scores
-        """
         if category not in self.scores:
             print(f"Category '{category}' not found. Available: {list(self.scores.keys())}")
             return None
@@ -379,15 +293,6 @@ class WalletScorer:
         return self.scores[category].head(n)
     
     def save_scores(self, output_dir='scores'):
-        """
-        Save all scored wallets to CSV files in the output directory.
-        
-        Args:
-            output_dir (str): Directory to save score files
-                             EDIT THIS if you want scores saved elsewhere
-        
-        File naming: <category>_wallet_scores_MMDDYYYY.csv
-        """
         output_path = Path(output_dir)
         output_path.mkdir(exist_ok=True)
         
@@ -406,21 +311,13 @@ class WalletScorer:
             
             print(f"  ✓ {filename} ({len(scores_df)} wallets)")
         
-        # Create a summary index file
         self._create_summary_index(output_path, today_str, saved_files)
         
         print(f"\n✓ Saved {len(saved_files)} category score files")
         return saved_files
     
     def _create_summary_index(self, output_path, date_str, saved_files):
-        """
-        Create a summary CSV with top 5 wallets from each category.
-        
-        Args:
-            output_path (Path): Output directory
-            date_str (str): Date string for filename
-            saved_files (list): List of saved filenames
-        """
+        #Create a summary CSV with top 5 wallets from each category.
         summary_data = []
         
         for category, scores_df in self.scores.items():
@@ -446,14 +343,10 @@ class WalletScorer:
         print(f"  ✓ TOP_WALLETS_SUMMARY_{date_str}.csv (top 5 per category)")
     
     def print_summary(self):
-        """Print a summary of the scoring results."""
-        print("\n" + "=" * 80)
         print("WALLET SCORING SUMMARY")
-        print("=" * 80)
         
         for category, scores_df in self.scores.items():
             print(f"\n{category.upper()} - Top 5 Wallets:")
-            print("-" * 80)
             
             top_5 = scores_df.head(5)
             
@@ -464,21 +357,9 @@ class WalletScorer:
                 print(f"    P&L: ${row['first_pnl']:,.0f} → ${row['last_pnl']:,.0f} ({'+' if row['pnl_change'] > 0 else ''}${row['pnl_change']:,.0f}, {row['pnl_growth_pct']:.1f}%)")
                 print(f"    Consistency: {row['appearances']} appearances over {row['days_tracked']} days")
         
-        print("\n" + "=" * 80)
     
     def run_full_analysis(self, save=True):
-        """
-        Execute the complete scoring pipeline.
-        
-        Args:
-            save (bool): Whether to save results to CSV
-        
-        Returns:
-            dict: Scores by category
-        """
-        print("=" * 80)
-        print("STARTING WALLET SCORING ANALYSIS")
-        print("=" * 80)
+
         
         # Step 1: Discover files
         self.discover_snapshot_files()
@@ -504,39 +385,15 @@ class WalletScorer:
         if save:
             self.save_scores()
         
-        print("\n" + "=" * 80)
-        print("ANALYSIS COMPLETE")
-        print("=" * 80)
         
         return self.scores
 
-
-# ============================================================================
-# MAIN EXECUTION
-# ============================================================================
-
 if __name__ == "__main__":
-    """
-    Main execution block - run this script to score wallets.
-    
-    TO USE THIS SCRIPT:
-    1. Ensure your 'snapshots' folder is in the same directory as this script
-       OR update the 'snapshots_dir' parameter below to point to your folder
-    
-    2. Run the script: python wallet_scorer.py
-    
-    3. Results will be saved to the 'scores' folder
-    """
-    
-    # ========================================================================
-    # CONFIGURATION - EDIT THESE PARAMETERS AS NEEDED
-    # ========================================================================
-    
+   
     SNAPSHOTS_DIR = 'snapshots'  # Path to your snapshots folder
     LOOKBACK_DAYS = 14           # Number of days to analyze (2 weeks)
     OUTPUT_DIR = 'scores'        # Where to save score files
     
-    # ========================================================================
     
     # Initialize scorer
     scorer = WalletScorer(
@@ -551,9 +408,6 @@ if __name__ == "__main__":
     if scores:
         # Example: Get top 5 politics traders
         if 'politics' in scores:
-            print("\n" + "=" * 80)
-            print("POLITICS - TOP 5 WALLETS TO FOLLOW:")
-            print("=" * 80)
             top_politics = scorer.get_top_wallets('politics', n=5)
             print(top_politics[['score_rank', 'userName', 'address', 'total_score', 'last_pnl', 'pnl_growth_pct']])
         
