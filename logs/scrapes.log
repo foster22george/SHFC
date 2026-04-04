@@ -213,3 +213,6 @@
 2026-04-03 05:09:03,335 - INFO - 12:00 Daily scrape starting (attempt 1/2)
 2026-04-03 05:09:28,376 - INFO - 12:00 Daily scrape completed: 1000 records
 2026-04-03 05:09:28,376 - INFO - 12:00 scrape job completed successfully
+2026-04-04 04:54:15,187 - INFO - 12:00 Daily scrape starting (attempt 1/2)
+2026-04-04 04:54:43,621 - INFO - 12:00 Daily scrape completed: 1000 records
+2026-04-04 04:54:43,622 - INFO - 12:00 scrape job completed successfully
