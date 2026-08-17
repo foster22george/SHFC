@@ -618,3 +618,6 @@
 2026-08-16 03:50:48,973 - INFO - 12:00 Daily scrape starting (attempt 1/2)
 2026-08-16 03:51:22,113 - INFO - 12:00 Daily scrape completed: 1000 records
 2026-08-16 03:51:22,113 - INFO - 12:00 scrape job completed successfully
+2026-08-17 03:52:45,130 - INFO - 12:00 Daily scrape starting (attempt 1/2)
+2026-08-17 03:53:18,777 - INFO - 12:00 Daily scrape completed: 1000 records
+2026-08-17 03:53:18,777 - INFO - 12:00 scrape job completed successfully
